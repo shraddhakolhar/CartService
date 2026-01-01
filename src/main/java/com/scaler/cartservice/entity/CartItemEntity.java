@@ -29,7 +29,6 @@ public class CartItemEntity {
 
     /**
      * Snapshot of price from ProductService
-     * This protects cart consistency if product price changes later
      */
     @Column(name = "unit_price", nullable = false)
     private Double unitPrice;
@@ -37,7 +36,13 @@ public class CartItemEntity {
     @Column(nullable = false)
     private Integer quantity;
 
-    public Double getTotalPrice() {
-        return unitPrice * quantity;
+    // STORED total price (unitPrice * quantity)
+    @Column(name = "total_price", nullable = false)
+    private Double totalPrice;
+
+    @PrePersist
+    @PreUpdate
+    public void calculateTotal() {
+        this.totalPrice = this.unitPrice * this.quantity;
     }
 }

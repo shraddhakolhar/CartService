@@ -3,6 +3,7 @@ package com.scaler.cartservice.service;
 import com.scaler.cartservice.dto.*;
 import com.scaler.cartservice.entity.CartItemEntity;
 import com.scaler.cartservice.repository.CartItemRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -15,6 +16,9 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final RestTemplate restTemplate;
 
+    @Value("${product.service.url}")
+    private String productServiceUrl;
+
     public CartService(
             CartItemRepository cartItemRepository,
             RestTemplate restTemplate
@@ -23,16 +27,18 @@ public class CartService {
         this.restTemplate = restTemplate;
     }
 
-    // 🔵 Add item to cart
+    // =========================
+    // ADD TO CART
+    // =========================
+    @Transactional
     public void addToCart(String userEmail, AddToCartRequest request) {
 
         CartItemEntity item = cartItemRepository
                 .findByUserEmailAndProductId(userEmail, request.getProductId())
                 .orElseGet(() -> {
 
-                    // Fetch product ONLY when item is first added
                     ProductDto product = restTemplate.getForObject(
-                            "http://localhost:8081/products/" + request.getProductId(),
+                            productServiceUrl + "/products/" + request.getProductId(),
                             ProductDto.class
                     );
 
@@ -44,16 +50,21 @@ public class CartService {
                             .userEmail(userEmail)
                             .productId(request.getProductId())
                             .quantity(0)
-                            .unitPrice(product.price()) // snapshot price
+                            .unitPrice(product.price()) // snapshot
+                            .totalPrice(0.0)             // will be recalculated
                             .build();
                 });
 
         item.setQuantity(item.getQuantity() + request.getQuantity());
+        // totalPrice recalculated by @PreUpdate
 
         cartItemRepository.save(item);
     }
 
-    // 🔵 Update quantity / remove item
+    // =========================
+    // UPDATE CART
+    // =========================
+    @Transactional
     public void updateCart(String userEmail, UpdateCartRequest request) {
 
         CartItemEntity item = cartItemRepository
@@ -64,11 +75,15 @@ public class CartService {
             cartItemRepository.delete(item);
         } else {
             item.setQuantity(request.getQuantity());
+            // totalPrice recalculated by @PreUpdate
             cartItemRepository.save(item);
         }
     }
 
-    // 🔵 View cart
+    // =========================
+    // VIEW CART
+    // =========================
+    @Transactional(readOnly = true)
     public CartResponse viewCart(String userEmail) {
 
         List<CartItemEntity> items =
@@ -81,25 +96,20 @@ public class CartService {
 
                     try {
                         ProductDto product = restTemplate.getForObject(
-                                "http://localhost:8081/products/" + item.getProductId(),
+                                productServiceUrl + "/products/" + item.getProductId(),
                                 ProductDto.class
                         );
                         if (product != null && product.title() != null) {
                             productName = product.title();
                         }
-                    } catch (Exception ignored) {
-                        // Cart must still work even if ProductService is down
-                    }
-
-                    double itemTotal =
-                            item.getUnitPrice() * item.getQuantity();
+                    } catch (Exception ignored) {}
 
                     return CartItemResponse.builder()
                             .productId(item.getProductId())
                             .productName(productName)
-                            .price(item.getUnitPrice()) // snapshot price
+                            .price(item.getUnitPrice())
                             .quantity(item.getQuantity())
-                            .itemTotal(itemTotal)
+                            .itemTotal(item.getTotalPrice()) // USE STORED VALUE
                             .build();
 
                 }).toList();
@@ -114,7 +124,9 @@ public class CartService {
                 .build();
     }
 
-    // 🔵 Clear cart (after checkout)
+    // =========================
+    // CLEAR CART
+    // =========================
     @Transactional
     public void clearCart(String userEmail) {
         cartItemRepository.deleteByUserEmail(userEmail);

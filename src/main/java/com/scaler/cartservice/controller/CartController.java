@@ -43,7 +43,7 @@ public class CartController {
         );
     }
 
-    // 🔥 REQUIRED BY ORDER SERVICE
+    // REQUIRED BY ORDER SERVICE
     @DeleteMapping("/delete")
     public ResponseEntity<Void> clearCart(Authentication authentication) {
         cartService.clearCart(authentication.getName());

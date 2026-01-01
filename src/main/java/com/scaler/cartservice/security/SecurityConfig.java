@@ -26,13 +26,13 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // 🔓 health / error
+                        // health / error
                         .requestMatchers("/error").permitAll()
 
-                        // 🔐 CART endpoints REQUIRE auth
+                        // CART endpoints REQUIRE auth
                         .requestMatchers("/cart/**").authenticated()
 
-                        // 🔒 everything else blocked
+                        // everything else blocked
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

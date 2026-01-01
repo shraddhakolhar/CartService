@@ -10,22 +10,16 @@ import java.util.Optional;
 
 public interface CartItemRepository extends JpaRepository<CartItemEntity, Long> {
 
-    /**
-     * Fetch all cart items for a user
-     */
+    // Fetch all cart items for a user
     List<CartItemEntity> findByUserEmail(String userEmail);
 
-    /**
-     * Fetch a specific product in user's cart
-     */
+    // Fetch a specific product in user's cart
     Optional<CartItemEntity> findByUserEmailAndProductId(
             String userEmail,
             Long productId
     );
 
-    /**
-     * Delete all cart items for a user (used after checkout)
-     */
+    // Delete all cart items for a user (used after checkout)
     @Modifying
     @Transactional
     void deleteByUserEmail(String userEmail);
