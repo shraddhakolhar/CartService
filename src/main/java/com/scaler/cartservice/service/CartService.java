@@ -3,7 +3,6 @@ package com.scaler.cartservice.service;
 import com.scaler.cartservice.dto.*;
 import com.scaler.cartservice.entity.CartItemEntity;
 import com.scaler.cartservice.repository.CartItemRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -15,9 +14,6 @@ public class CartService {
 
     private final CartItemRepository cartItemRepository;
     private final RestTemplate restTemplate;
-
-    @Value("${product.service.url}")
-    private String productServiceUrl;
 
     public CartService(
             CartItemRepository cartItemRepository,
@@ -38,7 +34,7 @@ public class CartService {
                 .orElseGet(() -> {
 
                     ProductDto product = restTemplate.getForObject(
-                            productServiceUrl + "/products/" + request.getProductId(),
+                            "http://PRODUCT-SERVICE/products/" + request.getProductId(),
                             ProductDto.class
                     );
 
@@ -50,14 +46,12 @@ public class CartService {
                             .userEmail(userEmail)
                             .productId(request.getProductId())
                             .quantity(0)
-                            .unitPrice(product.price()) // snapshot
-                            .totalPrice(0.0)             // will be recalculated
+                            .unitPrice(product.price())
+                            .totalPrice(0.0)
                             .build();
                 });
 
         item.setQuantity(item.getQuantity() + request.getQuantity());
-        // totalPrice recalculated by @PreUpdate
-
         cartItemRepository.save(item);
     }
 
@@ -75,7 +69,6 @@ public class CartService {
             cartItemRepository.delete(item);
         } else {
             item.setQuantity(request.getQuantity());
-            // totalPrice recalculated by @PreUpdate
             cartItemRepository.save(item);
         }
     }
@@ -96,7 +89,7 @@ public class CartService {
 
                     try {
                         ProductDto product = restTemplate.getForObject(
-                                productServiceUrl + "/products/" + item.getProductId(),
+                                "http://PRODUCT-SERVICE/products/" + item.getProductId(),
                                 ProductDto.class
                         );
                         if (product != null && product.title() != null) {
@@ -109,7 +102,7 @@ public class CartService {
                             .productName(productName)
                             .price(item.getUnitPrice())
                             .quantity(item.getQuantity())
-                            .itemTotal(item.getTotalPrice()) // USE STORED VALUE
+                            .itemTotal(item.getTotalPrice())
                             .build();
 
                 }).toList();
